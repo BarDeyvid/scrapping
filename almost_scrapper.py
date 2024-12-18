@@ -2,6 +2,18 @@ import requests
 from bs4 import BeautifulSoup
 import sqlite3
 
+def parse_price(value):
+    if type(value) != type(""):
+        return value
+    
+    new_value = value.replace("R$", "").strip().replace(",", "").replace(".", "")
+
+    if new_value == "":
+        return 0
+
+    return int(new_value)
+
+
 def data_scrape(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -12,17 +24,17 @@ def data_scrape(url):
         name = product.find('a', class_='poly-component__title').text.strip() if product.find('a', class_='poly-component__title') else 'No Name' #It's using the type of text and his class to find the product, if doesn't have one it returns 'No Name'
         price = product.find('span', class_='andes-money-amount andes-money-amount--cents-superscript').text.strip() if product.find('span', class_='andes-money-amount andes-money-amount--cents-superscript') else 'No Price' # Same kind of thing from above
 
-        products.append((name, price))
+        products.append((name, parse_price(price)))
         print(name, price, " were scrapped")
     return products
 def create_database():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS database (
+        CREATE TABLE IF NOT EXISTS product (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
-            price TEXT
+            price INTEGER
         )
     ''')
     print("Database Confirmed!")
@@ -34,7 +46,7 @@ def save_to_database(data):
     cursor = conn.cursor()
 
     for name, price in data:
-        cursor.execute('INSERT INTO database (name, price) VALUES (?, ?)', (name, price)) # The command that makes the information go to the database
+        cursor.execute('INSERT INTO product (name, price) VALUES (?, ?)', (name, price)) # The command that makes the information go to the database
 
     print("Name & Price Saved!")
     conn.commit()
